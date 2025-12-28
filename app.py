@@ -5,15 +5,17 @@ import pickle
 import shap
 import matplotlib.pyplot as plt
 
-# ------------------------------
-# Load trained model
-# ------------------------------
-with open("xgb_credit_model.pkl", "rb") as f:
-    model = pickle.load(f)
-
-explainer = shap.TreeExplainer(model)
-
 st.set_page_config(page_title="Credit Risk Prediction", layout="wide")
+
+# ------------------------------
+# Load model (cached)
+# ------------------------------
+@st.cache_resource
+def load_model():
+    with open("xgb_credit_model.pkl", "rb") as f:
+        return pickle.load(f)
+
+model = load_model()
 
 st.title("💳 Credit Card Default Risk Prediction")
 st.write("Predict default probability and explain decisions using SHAP")
@@ -57,18 +59,20 @@ if st.button("Predict Default Risk"):
         st.success("Low Risk Customer")
 
     # ------------------------------
-    # SHAP Explanation
+    # SHAP Explanation (ON-DEMAND)
     # ------------------------------
     st.subheader("🔍 SHAP Explanation")
 
-    shap_values = explainer.shap_values(input_df)
+    with st.spinner("Generating SHAP explanation..."):
+        explainer = shap.TreeExplainer(model)
+        shap_values = explainer.shap_values(input_df)
 
-    fig, ax = plt.subplots()
-    shap.force_plot(
-        explainer.expected_value,
-        shap_values[0],
-        input_df.iloc[0],
-        matplotlib=True,
-        show=False
-    )
-    st.pyplot(fig)
+        fig, ax = plt.subplots()
+        shap.force_plot(
+            explainer.expected_value,
+            shap_values[0],
+            input_df.iloc[0],
+            matplotlib=True,
+            show=False
+        )
+        st.pyplot(fig)
